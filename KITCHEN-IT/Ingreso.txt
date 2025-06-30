@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <title>Ingreso Kitchen-It</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    /* El código CSS permanece igual */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 20px;
+      background-color: #f6f8fa;
+      color: #24292e;
+    }
+
+    .fixed-header {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background-color: #fff;
+      padding: 10px 0;
+      z-index: 1000;
+      border-bottom: 1px solid #d1d5da;
+      box-shadow: 0 1px 3px rgba(27,31,35,0.12);
+      margin-bottom: 20px;
+    }
+
+    .table-container {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 80px; /* Ajustado para tener en cuenta la altura del pie de página */
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      background-color: #fff;
+      box-shadow: 0 1px 3px rgba(27,31,35,0.12), 0 8px 24px rgba(27,31,35,0.12);
+      position: relative;
+    }
+
+    .table-container thead th {
+      position: sticky;
+      top: 0;
+      background-color: #fff;
+      z-index: 1;
+    }
+
+    .form-header {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      background-color: #fff;
+      padding: 20px;
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(27,31,35,0.12);
+      margin-bottom: 20px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th,
+    .data-table td {
+      border: 1px solid #e1e4e8;
+      padding: 4px;
+      text-align: left;
+      vertical-align: middle;
+      font-size: 12px;
+    }
+
+    .data-table th {
+      background-color: #f6f8fa;
+      font-weight: bold;
+      text-align: center;
+      padding: 8px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 4px;
+      margin: 0;
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      font-size: 12px;
+      background-color: #fafbfc;
+      color: #24292e;
+      height: 30px; /* Añadido para asegurar una altura consistente */
+      box-sizing: border-box; /* Asegura que el padding no afecte la altura */
+    }
+
+    .number-input {
+      width: 60px; /* Ajustado para que se ajuste a la columna de la tabla */
+      padding: 2px;
+      height: 30px; /* Asegura una altura consistente */
+      box-sizing: border-box; /* Asegura que el padding no afecte la altura */
+    }
+
+    .bulto {
+      width: auto;
+      height: auto; /* Asegura que el checkbox no se agrande */
+    }
+
+    .add-row-button {
+      background-color: #2ea44f;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 3px rgba(27,31,35,0.12);
+    }
+
+    .remove-row-button {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px; /* Ancho reducido */
+      height: 20px; /* Altura reducida */
+      font-size: 14px; /* Tamaño de fuente reducido */
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .fixed-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: #fff;
+      padding: 10px 20px;
+      border-top: 1px solid #d1d5da;
+      box-shadow: 0 -1px 3px rgba(27,31,35,0.12);
+      z-index: 1000;
+      box-sizing: border-box;
+    }
+
+    .footer-buttons {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    .fixed-footer button {
+      background-color: #2ea44f;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .fixed-footer button:hover {
+      background-color: #2c974b;
+    }
+
+    /* Personalización de SweetAlert2 */
+    .swal2-popup {
+      font-size: 14px !important;
+      padding: 16px !important;
+      background-color: #fff !important;
+      color: #24292e !importante;
+      border: 1px solid #d1d5da !importante;
+      border-radius: 6px !importante;
+      width: 300px !importante;
+    }
+
+    .swal2-title {
+      font-size: 18px !important;
+    }
+
+    .swal2-content {
+      font-size: 14px !important;
+    }
+
+    .swal2-styled.swal2-confirm {
+      background-color: #2ea44f !important;
+      border: 1px solid rgba(27,31,35,0.15) !important;
+      color: #fff !important;
+      padding: 6px 12px !important;
+      font-size: 12px !important;
+    }
+
+    .swal2-styled.swal2-cancel {
+      background-color: #d1d5da !important;
+      color: #24292e !important;
+      padding: 6px 12px !important;
+      font-size: 12px !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="fixed-header">
+    <h1 style="font-size: 18px; margin: 0; font-weight: normal;">Selecciona Productos</h1>
+  </div>
+
+  <form id="formIngreso">
+    <div class="form-header">
+      <div>
+        <label for="fecha">Fecha:</label>
+        <input type="date" id="fecha" required>
+      </div>
+      <div>
+        <label for="guia">Documento de Ingreso:</label>
+        <input type="text" id="guia" placeholder="N° documento" minlength="3" required>
+      </div>
+      <div>
+        <label for="origen">Origen:</label>
+        <select id="origen" required>
+          <option value="" disabled selected>-- Selecciona Origen --</option>
+          <option value="Movimiento Interno">Movimiento Interno</option>
+          <option value="Contenedor">Contenedor</option>
+          <option value="Retorno Falabella">Retorno Falabella</option>
+          <option value="Retorno Plus Service">Retorno Plus Service</option>
+          <option value="Travel Ventas">Travel Ventas</option>
+          <option value="Retorno Duty Free Travel">Retorno Duty Free Travel</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Ubicación</th>
+            <th>Cantidad Cajas</th>
+            <th>Pallets (0-1)</th>
+            <th>Bulto</th>
+            <th>Eliminar</th>
+          </tr>
+        </thead>
+        <tbody id="productosTableBody"></tbody>
+      </table>
+    </div>
+  </form>
+
+  <div class="fixed-footer">
+    <div>
+      <button type="button" class="add-row-button" onclick="agregarFila()">+</button>
+    </div>
+    <div class="footer-buttons">
+      <button type="button" onclick="enviarFormulario()">Guardar</button>
+    </div>
+  </div>
+
+  <script>
+    // Función para establecer la fecha actual en formato DD-MM-YYYY
+    function establecerFechaActual() {
+        const fechaHoy = new Date();
+        const dia = String(fechaHoy.getDate()).padStart(2, '0');
+        const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0');
+        const anio = fechaHoy.getFullYear();
+
+        const fechaFormateada = `${anio}-${mes}-${dia}`;
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            input.value = fechaFormateada;
+        });
+    }
+
+    let ubicacionesDisponibles = [];
+    const filas = [];
+    let ubicacionesOriginales = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+        google.script.run
+            .withSuccessHandler((result) => {
+                ubicacionesDisponibles = result.opciones;
+                ubicacionesOriginales = [...result.opciones];
+                agregarFila();
+            })
+            .obtenerUbicacionesDisponibles();
+
+        establecerFechaActual();
+    });
+
+    function actualizarUbicaciones() {
+        const ubicacionesSeleccionadas = Array.from(document.querySelectorAll('.ubicacion'))
+            .map(select => select.value)
+            .filter(value => value !== "");
+
+        const ubicacionesDisponiblesActuales = ubicacionesOriginales.filter(
+            ubicacion => !ubicacionesSeleccionadas.includes(ubicacion)
+        );
+
+        document.querySelectorAll('.ubicacion').forEach(select => {
+            const valorActual = select.value;
+            select.innerHTML = '<option value="" disabled selected>-- Selecciona una ubicación --</option>';
+
+            if (valorActual) {
+                const opt = document.createElement("option");
+                opt.value = valorActual;
+                opt.textContent = valorActual;
+                opt.selected = true;
+                select.appendChild(opt);
+            }
+
+            ubicacionesDisponiblesActuales.forEach(ubicacion => {
+                if (ubicacion !== valorActual) {
+                    const opt = document.createElement("option");
+                    opt.value = ubicacion;
+                    opt.textContent = ubicacion;
+                    select.appendChild(opt);
+                }
+            });
+        });
+    }
+
+    function agregarFila() {
+        const tbody = document.getElementById('productosTableBody');
+        const newRow = document.createElement('tr');
+        const filaIndex = filas.length;
+
+        newRow.innerHTML = `
+            <td>
+                <select class="producto" required onchange="verificarValorUnitario(this)">
+                    <option value="" disabled selected>-- Selecciona un producto --</option>
+                </select>
+            </td>
+            <td>
+                <select class="ubicacion" required onchange="actualizarUbicaciones()">
+                    <option value="" disabled selected>-- Selecciona una ubicación --</option>
+                </select>
+            </td>
+            <td>
+                <input type="number" class="cantidad number-input" min="1" required>
+            </td>
+            <td>
+                <input type="number" class="pallets number-input" value="0" min="0" max="1" required>
+            </td>
+            <td style="text-align: center;">
+                <input type="checkbox" class="bulto">
+            </td>
+            <td style="text-align: center;">
+                <button type="button" class="remove-row-button" onclick="eliminarFila(${filaIndex})">×</button>
+            </td>
+        `;
+        tbody.appendChild(newRow);
+        filas.push(newRow);
+
+        google.script.run
+            .withSuccessHandler((result) => {
+                cargarOpcionesEnSelector(newRow.querySelector('.producto'), result.opciones);
+            })
+            .obtenerOpciones('producto');
+
+        const ubicacionSelect = newRow.querySelector('.ubicacion');
+        actualizarUbicaciones();
+    }
+
+    function eliminarFila(index) {
+        if (document.getElementById('productosTableBody').children.length > 1) {
+            filas[index].remove();
+            filas.splice(index, 1);
+            actualizarUbicaciones();
+        } else {
+            Swal.fire('Error', 'Debe mantener al menos una fila', 'error');
+        }
+    }
+
+    function cargarOpcionesEnSelector(select, opciones) {
+        const valorActual = select.value;
+        select.innerHTML = '<option value="" disabled selected>-- Selecciona una opción --</option>';
+        
+        opciones.forEach(opcion => {
+            const opt = document.createElement("option");
+            opt.value = opcion;
+            opt.textContent = opcion;
+            if (opcion === valorActual) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    }
+
+    function verificarValorUnitario(selectElement) {
+        const fila = selectElement.closest('tr');
+        const checkbox = fila.querySelector('.bulto');
+        const productoSeleccionado = selectElement.value;
+
+        checkbox.disabled = true;
+        checkbox.checked = false;
+
+        if (productoSeleccionado) {
+            google.script.run
+                .withSuccessHandler((valorUnitario) => {
+                    if (valorUnitario > 1) {
+                        checkbox.disabled = false;
+                    }
+                })
+                .obtenerValorUnitario(productoSeleccionado);
+        }
+    }
+
+    function enviarFormulario() {
+        const productos = [];
+        filas.forEach(fila => {
+            productos.push({
+                producto: fila.querySelector('.producto').value,
+                ubicacion: fila.querySelector('.ubicacion').value,
+                cantidad: fila.querySelector('.cantidad').value,
+                pallets: fila.querySelector('.pallets').value,
+                bulto: fila.querySelector('.bulto').checked 
+            });
+        });
+
+        const datos = {
+            fecha: document.getElementById("fecha").value,
+            guia: document.getElementById("guia").value,
+            origen: document.getElementById("origen").value,
+            productos: productos
+        };
+
+        if (!validarDatos(datos)) {
+            return false;
+        }
+
+        Swal.fire({
+            title: 'Confirmación',
+            text: `¿Guardar ingreso de ${productos.length} productos?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#2ea44f',
+            cancelButtonColor: '#d1d5da'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                google.script.run
+                    .withSuccessHandler((response) => {
+                        if (response.success) {
+                            Swal.fire('¡Guardado!', 'Los productos se ingresaron correctamente.', 'success')
+                                .then(() => {
+                                    document.getElementById('formIngreso').reset();
+                                    document.getElementById('productosTableBody').innerHTML = '';
+                                    filas.length = 0;
+                                    google.script.run
+                                        .withSuccessHandler((result) => {
+                                            ubicacionesDisponibles = result.opciones;
+                                            ubicacionesOriginales = [...result.opciones];
+                                            agregarFila();
+                                        })
+                                        .obtenerUbicacionesDisponibles();
+                                    establecerFechaActual();
+                                });
+                        } else {
+                            Swal.fire('Error', response.message || 'Error al guardar los datos', 'error');
+                        }
+                    })
+                    .withFailureHandler((error) => {
+                        Swal.fire('Error', error.message || 'Error al procesar la solicitud', 'error');
+                    })
+                    .guardarDatosIngreso(datos);
+            }
+        });
+
+        return false;
+    }
+
+    function validarDatos(datos) {
+        if (!datos.fecha || !datos.guia || !datos.origen || !datos.productos.length) {
+            Swal.fire('Error', 'Todos los campos son requeridos', 'error');
+            return false;
+        }
+
+        for (let producto of datos.productos) {
+            if (!producto.producto || !producto.ubicacion || !producto.cantidad) {
+                Swal.fire('Error', 'Complete todos los campos de productos', 'error');
+                return false;
+            }
+            if (producto.pallets < 0 || producto.pallets > 1) {
+                Swal.fire('Error', 'El valor de Pallets debe ser 0 o 1', 'error');
+                return false;
+            }
+        }
+
+        return true;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <title>Selecciona productos a Reubicar</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    .title {
+      font-size: 14px; /* Ajusta el tamaño */
+      text-align: left;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      margin: 20px;
+      background-color: #f6f8fa;
+      color: #24292e;
+    }
+
+    .fixed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #fff;
+      padding: 10px 0;
+      border-bottom: 1px solid #d1d5da;
+      box-shadow: 0 1px 3px rgba(27,31,35,0.12);
+    }
+
+    .table-container {
+      max-height: 300px; /* Ajustar la altura según sea necesario */
+      overflow-y: auto;
+      margin-bottom: 20px;
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      background-color: #fff;
+      box-shadow: 0 1px 3px rgba(27,31,35,0.12), 0 8px 24px rgba(27,31,35,0.12);
+      position: relative;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #e1e4e8;
+      padding: 4px; /* Reducir padding */
+      text-align: left;
+      vertical-align: middle;
+      font-size: 12px; /* Reducir tamaño de fuente */
+    }
+
+    th {
+      background-color: #f6f8fa;
+      font-weight: normal; /* Cambiar la negrita a normal */
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    input[type="radio"] {
+      cursor: pointer;
+    }
+
+    select, input[type="date"], button, input[type="number"] {
+      width: 100%;
+      padding: 4px; /* Reducir padding */
+      margin: 0;
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      font-size: 12px; /* Reducir tamaño de fuente */
+      background-color: #fafbfc;
+      color: #24292e;
+    }
+
+    input[type="date"] {
+      max-width: 200px; /* Reducir ancho máximo */
+    }
+
+    input[type="number"] {
+      max-width: 100px; /* Reducir ancho del input de cantidad */
+    }
+
+    button {
+      background-color: #2ea44f;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px; /* Reducir tamaño de fuente */
+      padding: 6px 12px;
+      border: 1px solid rgba(27,31,35,0.15);
+      border-radius: 6px;
+    }
+
+    button:hover {
+      background-color: #2c974b;
+    }
+
+    input[type="number"]:disabled {
+      background-color: #e1e4e8;
+      cursor: not-allowed;
+    }
+
+    .form-group {
+      margin-bottom: 10px; /* Mantener margen pequeño */
+    }
+
+    .fixed-footer {
+      position: sticky;
+      bottom: 0;
+      background-color: #fff;
+      padding: 10px 0;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      border-top: 1px solid #d1d5da;
+      box-shadow: 0 -1px 3px rgba(27,31,35,0.12);
+    }
+
+    .ubicaciones-container {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+    }
+
+    .ubicaciones-container > .form-group {
+      flex: 1;
+      margin-right: 10px;
+    }
+
+    .ubicaciones-container > .form-group:last-child {
+      margin-right: 0;
+    }
+
+    .fixed-footer button {
+      width: 100%; /* Asegurar que el botón tome todo el ancho */
+      margin-top: 10px; /* Agregar margen en la parte superior */
+    }
+
+    /* Estilos personalizados para SweetAlert2 */
+    .swal2-popup {
+      font-size: 14px !important; /* Reducir tamaño de fuente */
+      padding: 16px !important; /* Reducir padding */
+      background-color: #fff !important;
+      color: #24292e !important;
+      border: 1px solid #d1d5da !important;
+      border-radius: 6px !important;
+      width: 300px !important; /* Reducir el ancho del popup */
+    }
+
+    .swal2-title {
+      font-size: 18px !important; /* Reducir tamaño de fuente del título */
+    }
+
+    .swal2-content {
+      font-size: 14px !important; /* Reducir tamaño de fuente del contenido */
+    }
+
+    .swal2-styled.swal2-confirm {
+      background-color: #2ea44f !important;
+      border: 1px solid rgba(27,31,35,0.15) !important;
+      color: #fff !important;
+      padding: 6px 12px !important; /* Reducir padding del botón */
+      font-size: 12px !important; /* Reducir tamaño de fuente del botón */
+    }
+
+    .swal2-styled.swal2-confirm:hover {
+      background-color: #2c974b !important;
+    }
+
+    .swal2-styled.swal2-cancel {
+      background-color: #d1d5da !important;
+      color: #24292e !important;
+      padding: 6px 12px !important; /* Reducir padding del botón */
+      font-size: 12px !important; /* Reducir tamaño de fuente del botón */
+    }
+
+    .swal2-styled.swal2-cancel:hover {
+      background-color: #c6cbd1 !important;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="table-container">
+    <div class="fixed-header">
+      <h1 style="font-weight: normal;">Reubicación de Mercadería</h1>
+      <div class="form-group">
+        <label for="fechaMovimiento">Fecha de Movimiento:</label>
+        <input type="date" id="fechaMovimiento">
+      </div>
+    </div>
+    <table id="tablaUbicaciones">
+      <thead>
+        <tr>
+          <th>Seleccionar</th>
+          <th>Ubicación Actual</th>
+          <th>SKU</th>
+          <th>Descripción</th>
+          <th>Cantidad en Ubicación</th>
+          <th>Cantidad a Mover</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Aquí se insertarán las filas dinámicamente -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="fixed-footer">
+    <div class="ubicaciones-container">
+      <div class="form-group">
+        <input type="radio" id="radioNuevaUbicacion" name="tipoUbicacion" onclick="habilitarSelect('ubicacionNueva')">
+        <label for="radioNuevaUbicacion">Seleccionar Nueva Ubicación (Vacías):</label>
+        <select id="ubicacionNueva" disabled>
+          <option value="" disabled selected>-- Seleccione una nueva ubicación --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <input type="radio" id="radioUbicacionOcupada" name="tipoUbicacion" onclick="habilitarSelect('ubicacionOcupada')">
+        <label for="radioUbicacionOcupada">Nueva Ubicación (Ocupadas con el mismo SKU):</label>
+        <select id="ubicacionOcupada" disabled>
+          <option value="" disabled selected>-- Seleccione una ubicación ocupada --</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="guardarReubicacion()">Registrar Reubicación</button>
+  </div>
+
+  <script>
+    // Función para cargar ubicaciones desde el servidor
+    function cargarUbicaciones() {
+      google.script.run
+        .withSuccessHandler(poblarTablaUbicaciones)
+        .obtenerDatosUbicaciones();
+    }
+
+    // Función para poblar la tabla de ubicaciones con los datos obtenidos
+    function poblarTablaUbicaciones(datos) {
+      const tbody = document.getElementById("tablaUbicaciones").querySelector("tbody");
+      tbody.innerHTML = "";
+
+      if (!datos || datos.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 6;
+        td.textContent = "No hay datos disponibles.";
+        td.style.textAlign = "center";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      datos.forEach((fila, index) => {
+        const tr = document.createElement("tr");
+
+        const tdSeleccionar = document.createElement("td");
+        const inputRadio = document.createElement("input");
+        inputRadio.type = "radio";
+        inputRadio.name = "seleccionUbicacion";
+        inputRadio.value = JSON.stringify({ index, ...fila });
+        inputRadio.onclick = () => {
+          habilitarCantidadAMover(index);
+          cargarOpcionesUbicacionOcupada(fila[1], fila[0]);
+        };
+        tdSeleccionar.appendChild(inputRadio);
+        tr.appendChild(tdSeleccionar);
+
+        const tdUbicacion = document.createElement("td");
+        tdUbicacion.textContent = fila[0];
+        tr.appendChild(tdUbicacion);
+
+        const tdSKU = document.createElement("td");
+        tdSKU.textContent = fila[1];
+        tr.appendChild(tdSKU);
+
+        const tdDescripcion = document.createElement("td");
+        tdDescripcion.textContent = fila[2];
+        tr.appendChild(tdDescripcion);
+
+        const tdCantidad = document.createElement("td");
+        tdCantidad.textContent = fila[3];
+        tr.appendChild(tdCantidad);
+
+        const tdCantidadMover = document.createElement("td");
+        const inputCantidad = document.createElement("input");
+        inputCantidad.type = "number";
+        inputCantidad.id = `cantidadMover_${index}`;
+        inputCantidad.disabled = true;
+        inputCantidad.min = 1;
+        inputCantidad.max = fila[3];
+        tdCantidadMover.appendChild(inputCantidad);
+        tr.appendChild(tdCantidadMover);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Función para habilitar la entrada de cantidad a mover
+    function habilitarCantidadAMover(index) {
+      document.querySelectorAll('input[type="number"]').forEach(input => input.disabled = true);
+      document.getElementById(`cantidadMover_${index}`).disabled = false;
+    }
+
+    // Función para habilitar el select de ubicación
+    function habilitarSelect(id) {
+      document.getElementById("ubicacionNueva").disabled = true;
+      document.getElementById("ubicacionOcupada").disabled = true;
+      document.getElementById(id).disabled = false;
+    }
+
+    // Función para cargar opciones de ubicaciones vacías
+    function cargarOpcionesUbicacion() {
+      google.script.run
+        .withSuccessHandler(poblarOpcionesUbicacion)
+        .obtenerOpcionesUbicacion();
+    }
+
+    // Función para cargar opciones de ubicaciones ocupadas por SKU
+    function cargarOpcionesUbicacionOcupada(sku, ubicacionSeleccionada) {
+      google.script.run
+        .withSuccessHandler((opciones) => poblarOpcionesUbicacionOcupada(opciones, ubicacionSeleccionada))
+        .obtenerUbicacionesOcupadasPorSKU(sku);
+    }
+
+    // Función para poblar opciones de ubicaciones vacías
+    function poblarOpcionesUbicacion(opciones) {
+      const select = document.getElementById("ubicacionNueva");
+      select.innerHTML = '<option value="" disabled selected>-- Seleccione una nueva ubicación --</option>';
+
+      opciones.forEach(opcion => {
+        const optionElement = document.createElement("option");
+        optionElement.value = opcion;
+        optionElement.textContent = opcion;
+        select.appendChild(optionElement);
+      });
+    }
+
+    // Función para poblar opciones de ubicaciones ocupadas
+    function poblarOpcionesUbicacionOcupada(opciones, ubicacionSeleccionada) {
+      const select = document.getElementById("ubicacionOcupada");
+      select.innerHTML = '<option value="" disabled selected>-- Seleccione una ubicación ocupada --</option>';
+
+      opciones
+        .filter(opcion => opcion !== ubicacionSeleccionada)
+        .forEach(opcion => {
+          const optionElement = document.createElement("option");
+          optionElement.value = opcion;
+          optionElement.textContent = opcion;
+          select.appendChild(optionElement);
+        });
+    }
+
+    // Función para guardar la reubicación
+    function guardarReubicacion() {
+      const fecha = document.getElementById("fechaMovimiento").value;
+      const ubicacionNueva = document.getElementById("ubicacionNueva").value;
+      const ubicacionOcupada = document.getElementById("ubicacionOcupada").value;
+      const seleccion = document.querySelector("input[name='seleccionUbicacion']:checked");
+
+      if (!seleccion) {
+        Swal.fire("Error", "Debe seleccionar una ubicación para mover.", "error");
+        return;
+      }
+
+      if (!ubicacionNueva && !ubicacionOcupada) {
+        Swal.fire("Error", "Debe seleccionar una nueva ubicación.", "error");
+        return;
+      }
+
+      if (!fecha) {
+        Swal.fire("Error", "Debe ingresar la fecha del movimiento.", "error");
+        return;
+      }
+
+      const { index, ...datosSeleccionados } = JSON.parse(seleccion.value);
+      const cantidadAMover = document.getElementById(`cantidadMover_${index}`).value;
+
+      if (!cantidadAMover || cantidadAMover <= 0) {
+        Swal.fire("Error", "Debe ingresar una cantidad válida para mover.", "error");
+        return;
+      }
+
+      if (parseInt(cantidadAMover) > datosSeleccionados[3]) {
+        Swal.fire("Error", "La cantidad a mover no puede ser mayor a la cantidad en ubicación.", "error");
+        return;
+      }
+
+      const datos = {
+        fecha,
+        ubicacionAntigua: datosSeleccionados[0],
+        sku: datosSeleccionados[1],
+        descripcion: datosSeleccionados[2],
+        cantidadEnUbicacion: datosSeleccionados[3],
+        cantidadAMover,
+        ubicacionNueva: ubicacionNueva || ubicacionOcupada,
+      };
+
+      Swal.fire({
+        title: "Confirmación",
+        text: "¿Está seguro de registrar este movimiento?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, registrar",
+        cancelButtonText: "Cancelar",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          google.script.run
+            .withSuccessHandler(() => {
+              Swal.fire("Éxito", "La reubicación se ha registrado correctamente.", "success")
+                .then(() => {
+                  google.script.host.close(); // Cierra la ventana después del éxito
+                });
+              cargarUbicaciones();
+            })
+            .registrarReubicacion(datos);
+        }
+      });
+    }
+
+    // Función para establecer la fecha de hoy en el campo de fecha
+    function establecerFechaHoy() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+      const dd = String(today.getDate()).padStart(2, '0');
+      const formattedDate = `${yyyy}-${mm}-${dd}`;
+      document.getElementById("fechaMovimiento").value = formattedDate;
+    }
+
+    // Cargar ubicaciones y opciones al cargar la página
+    window.onload = function() {
+      cargarUbicaciones();
+      cargarOpcionesUbicacion();
+      establecerFechaHoy(); // Establecer la fecha actual al cargar la página
+    };
+  </script>
+</body>
+</html>

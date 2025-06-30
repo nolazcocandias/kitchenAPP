@@ -1,0 +1,764 @@
+//------------------------ ID CLIENTES/CTRL BODEGA--------------------------------------------------------
+const CRTLBOD = "1oLY-_7Ql1toJl2o9ZgyErbC_zorS8Tr2hEYMAeT0knk";
+const FKitchenit ="1Y6XrytFlkPUR1JEa-d7uxg94kvSjpP8f0g-5iR2r15I";
+const HOJA_ORDENES = "Ordenes de Produccion";
+//--------------MOSTRAR FORMULARIOS-----------------------------------------------------------------------
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  const ui3  = SpreadsheetApp.getUi();
+  
+  ui.createMenu('Kitchen-It')
+    .addSubMenu(ui.createMenu('Ingreso')
+      .addItem('Ingreso Mercadería', 'mostrarFormularioIngreso')
+      .addItem('Ingresar Devolución', 'mostrarFormularioIngresarDevolucion')
+      .addItem('Ingresar Insumo', 'openKitchenForm')
+    )
+    .addItem('Movimiento/Salida', 'mostrarFormularioMovimiento')
+    .addItem('Reubicar Productos', 'mostrarFormularioReubicar')
+    .addToUi();
+
+
+  ui3.createMenu('Imprimir')
+    .addSubMenu(ui.createMenu('Imprimir Documento')
+      .addItem('Documento Ingreso', 'imprimirDocumentoIngreso')
+      .addItem('Documento Reubicacion', 'imprimirDocumentoReubicacion')
+      .addItem('Documento Picking', 'imprimirDocumentoPicking')
+    )
+    .addToUi();
+}
+
+//----------------------- IMPRIMIR DOCUMENTOS-------------------------------------------------------------
+function imprimirDocumentoIngreso() {
+  abrirPDF('1Fuojppxk56U_K5RTld8ivGTb4EEVuUv4');
+}
+function imprimirDocumentoReubicacion() {
+  abrirPDF('1uzfTFuLExzBk6OlebJGPZ9lCsebd3WZc');
+}
+function imprimirDocumentoPicking() {
+  abrirPDF('1dYuytETmFKqZrHg0XmXoTUscAOKPiYUt');
+}
+function abrirPDF(fileId) {
+  var file = DriveApp.getFileById(fileId);
+  var url = file.getUrl();
+  var html = HtmlService.createHtmlOutput('<html><script>'
+    + 'window.open("' + url + '");google.script.host.close();'
+    + '</script></html>')
+    .setWidth(60)
+    .setHeight(60);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Abriendo PDF...');
+}
+//-------------------- FORMUALRIOS KITCHEN-IT-------------------------------------------------------------
+function mostrarFormularioReubicar() {
+  const html = HtmlService.createHtmlOutputFromFile('Reubicar')
+    .setWidth(1200).setHeight(600);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Reubicar Productos');
+}
+function mostrarFormularioIngreso() {
+  const html = HtmlService.createHtmlOutputFromFile('Ingreso')
+    .setWidth(1200)
+    .setHeight(600);
+  SpreadsheetApp.getUi().showModalDialog(html, "Ingreso Kitchen-It");
+}
+function mostrarFormularioMovimiento() {
+  const html = HtmlService.createHtmlOutputFromFile('Movimiento')
+    .setWidth(1200).setHeight(600);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Movimiento/Salida Kitchen-It');
+}
+function mostrarFormularioIngresarDevolucion() {
+  const html = HtmlService.createHtmlOutputFromFile('Devolucion')
+    .setWidth(1200).setHeight(600);
+  SpreadsheetApp.getUi().showModalDialog(html, "Devoluciones Kitchen-It");
+}
+//--------------------------------------------------------------------------------------------------------
+//------------------- FUNCIONES KITCHEN-IT----------------------------------------------------------------
+function obtenerOpciones(tipo) {
+  const hoja = SpreadsheetApp.openById(FKitchenit);
+  const hojau = SpreadsheetApp.openById(CRTLBOD);
+  let datos = [];
+
+  if (tipo === "producto") {
+    datos = hoja.getSheetByName("Maestro").getRange("H3:H").getValues(); // Columna H: Productos
+  } else if (tipo === "ubicacion") {
+    datos = hojau.getSheetByName("Ubicaciones").getRange("Z2:Z").getValues(); // Columna Z: Ubicaciones
+  }
+
+  // Filtra valores no vacíos y elimina duplicados
+  const opciones = datos.flat().filter((valor, indice, self) => valor && self.indexOf(valor) === indice);
+
+  return { tipo, opciones };
+}
+
+function obtenerValorUnitario(producto) {
+  const ss = SpreadsheetApp.openById(FKitchenit);
+  const hojaMAestro = ss.getSheetByName('Maestro');
+  
+  // Obtener datos del Maestro
+  const datosMaestro = hojaMAestro.getRange(2, 3, hojaMAestro.getLastRow() - 1, 4).getValues();
+  
+  // Buscar el producto y obtener su valor unitario
+  const productoIndex = datosMaestro.findIndex(row => row[0] === producto);
+  
+  // Retornar el valor unitario o 0 si no se encuentra
+  return productoIndex !== -1 ? datosMaestro[productoIndex][3] : 0;
+}
+
+function obtenerUbicacionesDisponibles() {
+  const ssu= SpreadsheetApp.openById(CRTLBOD);
+  const hojaUbicaciones = ssu.getSheetByName("Ubicaciones");
+  
+  // Obtener todas las ubicaciones posibles (columna Z)
+  const todasUbicaciones = hojaUbicaciones.getRange("Z2:Z" + hojaUbicaciones.getLastRow())
+    .getValues()
+    .flat()
+    .filter(ubicacion => ubicacion !== "");
+
+  // Obtener ubicaciones ocupadas (columna AC)
+  const ubicacionesOcupadas = hojaUbicaciones.getRange("AC2:AC" + hojaUbicaciones.getLastRow())
+    .getValues()
+    .flat()
+    .filter(ubicacion => ubicacion !== "");
+
+  // Filtrar ubicaciones disponibles y excluir las que comienzan con R-8-B
+  const ubicacionesDisponibles = todasUbicaciones.filter(ubicacion => 
+    !ubicacionesOcupadas.includes(ubicacion) && 
+    !ubicacion.toString().match(/^R-8-B\d+$/)  // Excluir ubicaciones R-8-B#
+  );
+
+  return {
+    success: true,
+    opciones: ubicacionesDisponibles
+  };
+}
+
+function guardarDatosIngreso(datos) {
+  const ss = SpreadsheetApp.openById(FKitchenit);
+  const ssu = SpreadsheetApp.openById(CRTLBOD);
+  const hojas = {
+    recepcion: ss.getSheetByName('Recepcion'),
+    ubicaciones: ssu.getSheetByName('Ubicaciones'),
+    maestro: ss.getSheetByName('Maestro')
+  };
+
+  if (!Object.values(hojas).every(hoja => hoja)) {
+    throw new Error('No se encontraron todas las hojas necesarias');
+  }
+
+  try {
+    // Obtener datos del Maestro en una sola lectura (Columnas C, D y F)
+    const datosMaestro = hojas.maestro.getRange(2, 3, hojas.maestro.getLastRow() - 1, 4).getValues();
+    const datosUbicaciones = hojas.ubicaciones.getRange(2, 4, hojas.ubicaciones.getLastRow() - 1, 1).getValues();
+    
+    // Procesar cada producto en la tabla
+    datos.productos.forEach(producto => {
+      // Buscar el SKU para el producto actual basándose en la descripción
+      const skuIndex = datosMaestro.findIndex(row => row[0] === producto.producto); // Cambiado a producto.producto
+      const sku = skuIndex !== -1 ? datosMaestro[skuIndex][1] : '';
+      // Buscar valor unitario y valor inner para el producto actual
+      const productoIndex = datosMaestro.findIndex(row => row[0] === producto.producto);
+      const valorUnitario = producto.bulto ? 1 : (productoIndex !== -1 ? datosMaestro[productoIndex][1] : 0);
+      const valorInner = producto.bulto ? 1 : (productoIndex !== -1 ? datosMaestro[productoIndex][3] : 1);
+      const cantidadTotal = producto.bulto ? parseInt(producto.cantidad) : valorInner * parseInt(producto.cantidad);
+      const valorTotal = valorUnitario * cantidadTotal;
+
+      // Preparar actualizaciones para cada producto
+      const updates = [];
+
+      // 1. Preparar datos para Recepcion
+      const ultimaFilaRecepcion = hojas.recepcion.getLastRow() + 1;
+
+      const datosRecepcion = [
+        [
+          datos.fecha,         // Columna A
+          datos.guia,          // Columna B
+          sku,                 // Columna C
+          producto.producto,   // Columna D
+          producto.cantidad,   // Columna E
+          cantidadTotal,       // Columna F
+          datos.origen,        // Columna G
+          producto.ubicacion,  // Columna H
+          producto.pallets     // Columna I
+        ]
+      ];
+
+      updates.push({
+        sheet: hojas.recepcion,
+        range: hojas.recepcion.getRange(ultimaFilaRecepcion, 1, 1, 9),
+        values: datosRecepcion
+      });
+
+      // 2. Preparar actualización de Ubicaciones
+      const ubicacionIndex = datosUbicaciones.findIndex(row => row[0] === producto.ubicacion);
+      if (ubicacionIndex !== -1) {
+        const filaUbicacion = ubicacionIndex + 2;
+
+        const datosUbicacionesParte1 = [
+          [
+            datos.fecha,
+            datos.guia,
+          ]
+        ];
+
+        const datosUbicacionesParte2 = [
+          [
+            producto.producto,
+            valorTotal,
+            datos.origen
+          ]
+        ];
+
+        updates.push({
+          sheet: hojas.ubicaciones,
+          range: hojas.ubicaciones.getRange(filaUbicacion, 5, 1, 2),
+          values: datosUbicacionesParte1
+        });
+
+        updates.push({
+          sheet: hojas.ubicaciones,
+          range: hojas.ubicaciones.getRange(filaUbicacion, 8, 1, 3),
+          values: datosUbicacionesParte2
+        });
+
+        // Actualización adicional para la columna "O" con el valor "KITCHEN-IT"
+        const datosUbicacionesParte3 = [
+          ["KITCHEN-IT"]
+        ];
+
+        updates.push({
+          sheet: hojas.ubicaciones,
+          range: hojas.ubicaciones.getRange(filaUbicacion, 15, 1, 1),
+          values: datosUbicacionesParte3
+        });
+
+        // Actualización adicional para la columna "G" con el SKU correspondiente
+        const datosUbicacionesParte4 = [
+          [sku]
+        ];
+
+        updates.push({
+          sheet: hojas.ubicaciones,
+          range: hojas.ubicaciones.getRange(filaUbicacion, 7, 1, 1), // Columna G es la columna 7
+          values: datosUbicacionesParte4
+        });
+
+        // Actualización adicional para la columna "I" con el valor total de cantidad
+        const datosUbicacionesParte5 = [
+          [cantidadTotal]
+        ];
+
+        updates.push({
+          sheet: hojas.ubicaciones,
+          range: hojas.ubicaciones.getRange(filaUbicacion, 9, 1, 1), // Columna I es la columna 9
+          values: datosUbicacionesParte5
+        });
+      }
+
+      // Ejecutar actualizaciones para este producto
+      updates.forEach(update => {
+        update.range.setValues(update.values);
+      });
+    });
+
+    return {
+      success: true,
+      message: 'Datos guardados correctamente',
+      guia: datos.guia
+    };
+
+  } catch (error) {
+    Logger.log(`Error al guardar datos: ${error.message}`);
+    throw new Error(`Error al guardar datos: ${error.message}`);
+  }
+}
+
+function obtenerDatosSKU() {
+  const hoja = SpreadsheetApp.openById(CRTLBOD).getSheetByName('Ubicaciones');
+  const lastRow = hoja.getLastRow();
+  const dataRange = hoja.getRange("AC2:AF" + lastRow);
+  const data = dataRange.getValues();
+  const filtro = hoja.getRange("AL2:AL" + lastRow).getValues();
+  
+  const filteredData = data.filter((row, index) => filtro[index][0] === "KITCHEN-IT");
+  return filteredData.map(([ubicacion, sku, descripcion, disponible]) => ({ ubicacion, sku, descripcion, disponible }));
+}
+
+function obtenerDestinos() {
+  const hojaMaestro = SpreadsheetApp.openById(FKitchenit).getSheetByName("Maestro");
+  const destinos = hojaMaestro.getRange("L3:L" + hojaMaestro.getLastRow()).getValues();
+  return destinos.filter(destino => destino[0] !== "").map(destino => destino[0]);
+}
+
+function registrarMovimiento(datos) {
+  const ss = SpreadsheetApp.openById(FKitchenit);
+  const ssu = SpreadsheetApp.openById(CRTLBOD);
+  const hojaUbicaciones = ssu.getSheetByName("Ubicaciones");
+  const hojaMovimientos = ss.getSheetByName("Movimientos");
+
+  const hojasDestino = {
+    "MERCADOLIBRE - FULLFILLMENT": "MELIFF",
+    "FALABELLA - FULLFILLMENT": "FALAFF",
+    "PARIS - FULLFILLMENT": "PARIFF",
+    "RIPLEY - FULLFILLMENT": "RIPLFF",
+    "WALMART - FULLFILLMENT": "WALMFF",
+    "EL VOLCAN - FULLFILLMENT": "ELVOMFF",
+    "MELOLLEVO - FULLFILLMENT": "MELOFF",
+    "EMOL - FULLFILLMENT": "EMOLFF",
+    "IRON MOUNTAIN - BODEGA PULMON": "IRNMTN"
+  };
+
+  const ubicacionesData = hojaUbicaciones.getRange(2, 1, hojaUbicaciones.getLastRow() - 1, 15).getValues();
+
+  const ubicacionesUpdates = [];
+  const movimientosUpdates = [];
+  const destinoUpdates = {};
+
+  Object.keys(hojasDestino).forEach(key => {
+    destinoUpdates[hojasDestino[key]] = [];
+  });
+
+  datos.filasSeleccionadas.forEach((fila, index) => {
+    const ubicacionIndex = ubicacionesData.findIndex(row => row[3] === fila.ubicacion);
+
+    if (ubicacionIndex !== -1) {
+      const cantidadActual = ubicacionesData[ubicacionIndex][8];
+      const nuevaCantidad = cantidadActual - fila.cantidad;
+
+      if (nuevaCantidad <= 0) {
+        ubicacionesUpdates.push({
+          row: ubicacionIndex + 2,
+          clearColumns: [5, 6, 7, 8, 9, 10, 15] // Columnas E, F, G, H, I, J y O
+        });
+      } else {
+        ubicacionesUpdates.push({
+          row: ubicacionIndex + 2,
+          column: 9,
+          value: nuevaCantidad
+        });
+      }
+
+      const movimientoRow = [
+        datos.fecha,
+        datos.documento,
+        fila.sku,
+        fila.descripcion,
+        fila.cantidad,
+        datos.destino,
+        fila.ubicacion,
+        index === 0 ? datos.pallets : ''
+      ];
+
+      movimientosUpdates.push(movimientoRow);
+
+      const nombreHojaDestino = hojasDestino[datos.destino];
+      if (nombreHojaDestino) {
+        destinoUpdates[nombreHojaDestino].push(movimientoRow);
+      }
+    }
+  });
+
+  ubicacionesUpdates.forEach(update => {
+    if (update.clearColumns) {
+      update.clearColumns.forEach(col => {
+        hojaUbicaciones.getRange(update.row, col).clearContent();
+      });
+    } else {
+      hojaUbicaciones.getRange(update.row, update.column).setValue(update.value);
+    }
+  });
+
+  if (movimientosUpdates.length > 0) {
+    const lastRow = hojaMovimientos.getLastRow() + 1;
+    hojaMovimientos.getRange(lastRow, 1, movimientosUpdates.length, 8)
+      .setValues(movimientosUpdates);
+  }
+
+  Object.entries(destinoUpdates).forEach(([nombreHoja, updates]) => {
+    if (updates.length > 0) {
+      const hojaDestino = ss.getSheetByName(nombreHoja);
+      if (hojaDestino) {
+        const lastRow = hojaDestino.getLastRow() + 1;
+        hojaDestino.getRange(lastRow, 1, updates.length, 8)
+          .setValues(updates);
+
+        // Asignar el correlativo en la columna "I" si la hoja es "IRNMTN"
+        if (nombreHoja === "IRNMTN") {
+          const prefix = "KIT-IMT-PP";
+          const lastCodes = hojaDestino.getRange(2, 9, hojaDestino.getLastRow() - 1).getValues().flat().filter(code => code.startsWith(prefix));
+          let lastNumber = 0;
+          if (lastCodes.length > 0) {
+            lastCodes.sort();
+            lastNumber = parseInt(lastCodes[lastCodes.length - 1].replace(prefix, ''), 10);
+          }
+          for (let i = 0; i < updates.length; i++) {
+            const correlativo = prefix + ("0000" + (lastNumber + i + 1)).slice(-3);
+            hojaDestino.getRange(lastRow + i, 9).setValue(correlativo); // Columna "I" es la columna 9
+          }
+        }
+      }
+    }
+  });
+}
+
+function obtenerDescripciones() {
+  const sheet = SpreadsheetApp.openById(FKitchenit).getSheetByName("Maestro");
+  const datos = sheet.getRange("C3:C" + sheet.getLastRow()).getValues();
+  const descripciones = [];
+
+  datos.forEach(row => {
+    if (row[0] && !descripciones.includes(row[0])) {
+      descripciones.push(row[0]);
+    }
+  });
+
+  return descripciones;
+}
+
+function buscarDatosProducto(gtin) {
+  const sheet = SpreadsheetApp.openById(FKitchenit).getSheetByName("Maestro");
+  const datos = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < datos.length; i++) {
+    if (datos[i][1] == gtin) {
+      return { sku: datos[i][3], descripcion: datos[i][2] };
+    }
+  }
+  return null;
+}
+
+function buscarSKUporDescripcion(descripcion) {
+  const sheet = SpreadsheetApp.openById(FKitchenit).getSheetByName("Maestro");
+  const datos = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < datos.length; i++) {
+    if (datos[i][2] == descripcion) {
+      return datos[i][3];
+    }
+  }
+  return null;
+}
+
+function guardarDevolucion(datos) {
+  const ss = SpreadsheetApp.openById(FKitchenit);
+  const ssu= SpreadsheetApp.openById(CRTLBOD);
+  const hojas = {
+    devoluciones: ss.getSheetByName('Devoluciones'),
+    ubicaciones: ssu.getSheetByName('Ubicaciones')
+  };
+
+  if (!Object.values(hojas).every(hoja => hoja)) {
+    throw new Error('No se encontraron todas las hojas necesarias');
+  }
+
+  try {
+    // 1. Primero guardar en Devoluciones
+    datos.productos.forEach(producto => {
+      const ultimaFilaDevoluciones = hojas.devoluciones.getLastRow() + 1;
+      const datosDevoluciones = [[
+        datos.fecha,
+        producto.sku,
+        producto.descripcion,
+        producto.estado,
+        producto.origen,
+        producto.numeroOrden,
+        producto.cantidad,
+        producto.comentario
+      ]];
+      hojas.devoluciones.getRange(ultimaFilaDevoluciones, 1, 1, 8).setValues(datosDevoluciones);
+    });
+
+    // 2. Procesar Ubicaciones - Solo productos buenos
+    const productosBuenos = datos.productos.filter(p => p.estado === "Bueno");
+    
+    if (productosBuenos.length > 0) {
+      // Obtener todas las filas de la hoja Ubicaciones
+      const hojaUbicaciones = hojas.ubicaciones;
+      const ultimaFila = hojaUbicaciones.getLastRow();
+      const datosCompletos = hojaUbicaciones.getRange(1, 1, ultimaFila, 13).getValues();
+
+      // Crear array solo con filas RECUPERADO
+      const filasRecuperado = datosCompletos
+        .map((fila, index) => ({
+          indice: index + 1,
+          descripcion: fila[7],  // Columna H
+          cantidad: fila[8],     // Columna I
+          esRecuperado: fila[12] === "RECUPERADO",  // Columna M
+          estaVacia: !fila[7] || fila[7].toString().trim() === ""
+        }))
+        .filter(fila => fila.esRecuperado);
+
+      Logger.log('Filas RECUPERADO encontradas: ' + filasRecuperado.length);
+
+      // Procesar cada producto bueno
+      productosBuenos.forEach(producto => {
+        Logger.log('Procesando producto: ' + producto.descripcion);
+
+        // Buscar si ya existe la descripción en alguna fila RECUPERADO
+        const filaExistente = filasRecuperado.find(fila => 
+          fila.descripcion === producto.descripcion
+        );
+
+        // Buscar primera fila vacía de RECUPERADO
+        const filaVacia = filasRecuperado.find(fila => 
+          fila.estaVacia
+        );
+
+        if (filaExistente) {
+          // Actualizar fila existente
+          Logger.log('Actualizando fila existente: ' + filaExistente.indice);
+          
+          const cantidadActual = parseFloat(filaExistente.cantidad) || 0;
+          const nuevaCantidad = cantidadActual + parseFloat(producto.cantidad);
+
+          // Actualizar solo fecha, número de orden y nueva cantidad
+          hojaUbicaciones.getRange(filaExistente.indice, 5).setValue(datos.fecha);        // Fecha (E)
+          hojaUbicaciones.getRange(filaExistente.indice, 6).setValue(producto.numeroOrden); // N° Orden (F)
+          hojaUbicaciones.getRange(filaExistente.indice, 9).setValue(nuevaCantidad);      // Cantidad (I)
+
+          // Actualizar cantidad en nuestro array de control
+          filaExistente.cantidad = nuevaCantidad;
+
+        } else if (filaVacia) {
+          // Usar fila vacía de RECUPERADO
+          Logger.log('Usando fila vacía: ' + filaVacia.indice);
+
+          // Actualizar fila vacía con nuevos datos
+          hojaUbicaciones.getRange(filaVacia.indice, 5).setValue(datos.fecha);        // Fecha (E)
+          hojaUbicaciones.getRange(filaVacia.indice, 6).setValue(producto.numeroOrden); // N° Orden (F)
+          hojaUbicaciones.getRange(filaVacia.indice, 7).setValue(producto.sku) //sku (G)
+          hojaUbicaciones.getRange(filaVacia.indice, 8).setValue(producto.descripcion); // Descripción (H)
+          hojaUbicaciones.getRange(filaVacia.indice, 9).setValue(producto.cantidad);    // Cantidad (I)
+          hojaUbicaciones.getRange(filaVacia.indice, 10).setValue("Devoluciones");      // Origen (J)
+          hojaUbicaciones.getRange(filaVacia.indice, 15).setValue("KITCHEN-IT"); // KITCHEN-IT
+          // Actualizar array de control
+          filaVacia.descripcion = producto.descripcion;
+          filaVacia.cantidad = producto.cantidad;
+          filaVacia.estaVacia = false;
+
+        } else {
+          throw new Error('No hay filas RECUPERADO disponibles para: ' + producto.descripcion);
+        }
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Datos guardados correctamente'
+    };
+
+  } catch (error) {
+    Logger.log('Error en guardarDevolucion: ' + error.message);
+    throw new Error('Error al guardar datos: ' + error.message);
+  }
+}
+
+function obtenerDatosUbicaciones() {
+  const hoja= SpreadsheetApp.openById(CRTLBOD).getSheetByName("Ubicaciones")
+  const datos = hoja.getRange("BL3:BP" + hoja.getLastRow()).getValues();///////////////AC2:AG
+  return datos.filter(fila => fila.some(celda => celda !== ""));
+}
+
+function obtenerOpcionesUbicacion() {
+  const hoja= SpreadsheetApp.openById(CRTLBOD).getSheetByName("Ubicaciones")
+  const datos = hoja.getRange("Z2:Z" + hoja.getLastRow()).getValues();//Z2:z CAMBIO SI NO FUNK
+  return datos.flat().filter((valor, i, self) => valor && self.indexOf(valor) === i);
+}
+
+function obtenerUbicacionesOcupadasPorSKU(sku) {
+  try {
+    const sheet= SpreadsheetApp.openById(CRTLBOD).getSheetByName("Ubicaciones")
+    
+    // Verificar si la hoja existe
+    if (!sheet) {
+      throw new Error("No se encontró la hoja 'Ubicaciones'");
+    }
+
+    // Obtener el último registro con datos
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow < 2) { // Si solo hay encabezados o está vacía
+      return [];
+    }
+
+    // Obtener todos los datos en un solo llamado
+    const dataRange = sheet.getRange("AC2:AF" + lastRow);//ac2:af
+    const data = dataRange.getValues();
+
+    // Crear array para almacenar ubicaciones
+    const ubicacionesOcupadas = [];
+
+    // Procesar los datos usando forEach para mejor rendimiento
+    data.forEach(row => {
+      // Verificar que la fila tenga datos válidos y coincida con el SKU
+      if (row[1] && row[1].toString() === sku.toString() && row[0]) {
+        // Agregar solo ubicaciones únicas
+        if (!ubicacionesOcupadas.includes(row[0])) {
+          ubicacionesOcupadas.push(row[0]);
+        }
+      }
+    });
+
+    // Registrar en el log para debugging
+    Logger.log(`Se encontraron ${ubicacionesOcupadas.length} ubicaciones para el SKU: ${sku}`);
+    
+    return ubicacionesOcupadas;
+
+  } catch (error) {
+    Logger.log(`Error en obtenerUbicacionesOcupadasPorSKU: ${error.message}`);
+    return [];
+  }
+}
+
+function registrarReubicacion(datos) {
+  const ssu = SpreadsheetApp.openById(CRTLBOD);
+  const ss = SpreadsheetApp.openById(FKitchenit);
+  const hojas = {
+    reubicaciones: ss.getSheetByName('Reubicaciones'),
+    ubicaciones: ssu.getSheetByName('Ubicaciones'),
+    maestro: ss.getSheetByName('Maestro')
+  };
+
+  if (!Object.values(hojas).every(hoja => hoja)) {
+    throw new Error('No se encontraron todas las hojas necesarias');
+  }
+
+  try {
+    const updates = [];
+
+    const filaReubicacion = [
+      [
+        datos.fecha,
+        datos.ubicacionAntigua,
+        datos.sku,
+        datos.descripcion,
+        datos.cantidadEnUbicacion,
+        datos.cantidadAMover,
+        datos.ubicacionNueva
+      ]
+    ];
+
+    updates.push({
+      sheet: hojas.reubicaciones,
+      range: hojas.reubicaciones.getRange(hojas.reubicaciones.getLastRow() + 1, 1, 1, filaReubicacion[0].length),
+      values: filaReubicacion
+    });
+
+    const ubicacionesData = hojas.ubicaciones.getRange(1, 1, hojas.ubicaciones.getLastRow(), 15).getValues();
+    const maestroData = hojas.maestro.getRange(1, 1, hojas.maestro.getLastRow(), 4).getValues(); // Datos de la hoja Maestro
+    
+    const indexAntigua = ubicacionesData.findIndex(row => row[3] === datos.ubicacionAntigua);
+    const indexNueva = ubicacionesData.findIndex(row => row[3] === datos.ubicacionNueva);
+
+    if (indexAntigua === -1) {
+      throw new Error('La ubicación antigua no se encontró');
+    }
+
+    const cantidadEnUbicacion = parseFloat(ubicacionesData[indexAntigua][8]) || 0;
+    const cantidadAMover = parseFloat(datos.cantidadAMover);
+    const nuevaCantidad = cantidadEnUbicacion - cantidadAMover;
+    const origenIngreso = ubicacionesData[indexAntigua][9];
+    const documentoOriginal = ubicacionesData[indexAntigua][5];
+    const descripcion = datos.descripcion;
+
+    // Buscar el SKU correspondiente en la hoja Maestro
+    const skuRow = maestroData.find(row => row[2] === descripcion);
+    const sku = skuRow ? skuRow[3] : '';
+
+    if (!sku) {
+      throw new Error('No se encontró el SKU correspondiente en la hoja Maestro');
+    }
+
+    if (nuevaCantidad <= 0) {
+      const rangosALimpiar = [
+        hojas.ubicaciones.getRange(indexAntigua + 1, 5, 1, 6), // Columnas E a J
+        hojas.ubicaciones.getRange(indexAntigua + 1, 15, 1, 1) // Columna O
+      ];
+      rangosALimpiar.forEach(rango => updates.push({
+        sheet: hojas.ubicaciones,
+        range: rango,
+        action: 'clear'
+      }));
+    } else {
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexAntigua + 1, 9),
+        values: [[nuevaCantidad]]
+      });
+    }
+
+    if (indexNueva === -1) {
+      const nuevaFila = [
+        ['', '', '', datos.ubicacionNueva, datos.fecha, documentoOriginal, sku,
+         datos.descripcion, cantidadAMover, origenIngreso, '', '', '', '', 'KITCHEN-IT']
+      ];
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(hojas.ubicaciones.getLastRow() + 1, 1, 1, 15),
+        values: nuevaFila
+      });
+    } else {
+      const cantidadEnUbicacionNueva = parseFloat(ubicacionesData[indexNueva][8]) || 0;
+      const nuevaCantidadTotal = cantidadEnUbicacionNueva + cantidadAMover;
+
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexNueva + 1, 5),
+        values: [[datos.fecha]]
+      });
+
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexNueva + 1, 6),
+        values: [[documentoOriginal]]
+      });
+
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexNueva + 1, 7),
+        values: [[sku]]
+      });
+
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexNueva + 1, 8),
+        values: [[datos.descripcion]]
+      });
+
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexNueva + 1, 9),
+        values: [[nuevaCantidadTotal]]
+      });
+
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexNueva + 1, 10),
+        values: [[origenIngreso]]
+      });
+
+      updates.push({
+        sheet: hojas.ubicaciones,
+        range: hojas.ubicaciones.getRange(indexNueva + 1, 15),
+        values: [['KITCHEN-IT']]
+      });
+    }
+
+    updates.forEach(update => {
+      if (update.action === 'clear') {
+        update.range.clearContent();
+      } else {
+        update.range.setValues(update.values);
+      }
+    });
+
+    Logger.log(`Reubicación completada: ${datos.ubicacionAntigua} -> ${datos.ubicacionNueva}`);
+
+    return {
+      success: true,
+      message: 'Reubicación completada exitosamente'
+    };
+
+  } catch (error) {
+    Logger.log(`Error en reubicación: ${error.message}`);
+    throw new Error(`Error al procesar la reubicación: ${error.message}`);
+  }
+}
+
